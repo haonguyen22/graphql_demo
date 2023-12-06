@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:graphql_demo/data/data_source/remote/query.dart';
 import 'package:graphql_demo/domain/entities/review.dart';
 import 'package:graphql_demo/widgets/app_bar.dart';
 import 'package:graphql_demo/widgets/item_listtile.dart';
@@ -20,23 +21,9 @@ class _ReviewsScreenState extends State<ReviewsScreen> {
             preferredSize: Size.fromHeight(60),
             child: MainAppBar(title: 'Reviews')),
         body: Query(
-          options: QueryOptions(document: gql(r""" 
-        query Reviews {
-          reviews {
-            id
-            rating
-            content
-            author {
-              id
-              name
-            }
-            game {
-              id
-              title
-            }
-          }
-        }
-      """), fetchPolicy: FetchPolicy.cacheFirst),
+          options: QueryOptions(
+              document: gql(GrapqhQuery.queryAllReviews),
+              fetchPolicy: FetchPolicy.cacheFirst),
           builder: (result, {fetchMore, refetch}) {
             if (result.hasException) {
               return Center(child: Text(result.exception.toString()));

@@ -1,6 +1,17 @@
+/*
+Solution 2: using Query and Mutation Widget to get data from server and create new review
+
+*/
+
+
 import 'package:flutter/material.dart';
+import 'package:graphql_demo/data/data_source/remote/graphql_service.dart';
+import 'package:graphql_demo/data/data_source/remote/query.dart';
+import 'package:graphql_demo/domain/entities/author.dart';
 import 'package:graphql_demo/domain/entities/game.dart';
 import 'package:graphql_demo/widgets/app_bar.dart';
+import 'package:graphql_demo/widgets/game_info.dart';
+import 'package:graphql_demo/widgets/review_card.dart';
 import 'package:graphql_flutter/graphql_flutter.dart';
 
 class GameDetailsScreen extends StatefulWidget {
@@ -13,29 +24,36 @@ class GameDetailsScreen extends StatefulWidget {
 }
 
 class _GameDetailsScreenState extends State<GameDetailsScreen> {
+  List<Author> authors = [];
+  GraphQLService graphQLService = GraphQLService();
+  TextEditingController ratingCtrl = TextEditingController();
+  TextEditingController contentCtrl = TextEditingController();
+  Author? selectedAuthor;
+
+  @override
+  void initState() {
+    initLoad();
+    super.initState();
+  }
+
+  @override
+  void dispose() {
+    ratingCtrl.dispose();
+    contentCtrl.dispose();
+    super.dispose();
+  }
+
+  void initLoad() async {
+    authors = (await graphQLService.getAuthors()) ?? [];
+  }
+
+  void createReview() {}
+
   @override
   Widget build(BuildContext context) {
     return Query(
       options: QueryOptions(
-        document: gql(r""" 
-        query Game($gameId: ID!) {
-          game(id: $gameId) {
-            id
-            title
-            platform
-            reviews {
-              rating
-              content
-              author {
-                name
-              }
-              game {
-                title
-              }
-            }
-          }
-        }
-      """),
+        document: gql(GrapqhQuery.queryGameById),
         fetchPolicy: FetchPolicy.noCache,
         variables: {
           'gameId': widget.id,
@@ -70,117 +88,108 @@ class _GameDetailsScreenState extends State<GameDetailsScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
-                  'Title',
-                  style: TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-                const SizedBox(height: 10),
-                Text(
-                  game.title ?? "Game title",
-                  style: const TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w400,
-                  ),
-                ),
-                const SizedBox(height: 10),
-                const Text(
-                  'Platform',
-                  style: TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-                const SizedBox(height: 10),
-                Text(
-                  game.platform?.join(" - ") ?? 'Platform',
-                  style: const TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w400,
-                  ),
-                ),
-                const SizedBox(height: 10),
-                const Text(
-                  'Reviews',
-                  style: TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-                const SizedBox(height: 10),
+                GameInfoWidget(game: game),
                 Column(
                   children: List.generate(
                     game.reviews?.length ?? 0,
                     (index) {
                       final review = game.reviews?[index];
-                      return Container(
-                        margin: const EdgeInsets.symmetric(vertical: 10),
-                        padding: const EdgeInsets.all(10),
-                        decoration: BoxDecoration(
-                          color: Colors.grey[200],
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Row(
-                              children: [
-                                CircleAvatar(
-                                  radius: 20,
-                                  backgroundColor:
-                                      Theme.of(context).primaryColor,
-                                  child: const Icon(
-                                    Icons.person_rounded,
-                                    color: Colors.white,
-                                    size: 20,
-                                  ),
-                                ),
-                                const SizedBox(width: 8),
-                                Text(
-                                  review?.author?.name ?? "Unknown",
-                                  style: const TextStyle(
-                                    fontSize: 18, // Increased text size to 18
-                                    fontWeight: FontWeight.w500,
-                                  ),
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 8),
-                            Row(
-                              children: [
-                                Icon(
-                                  Icons.star,
-                                  color: Colors.yellow[700],
-                                  size: 18,
-                                ),
-                                const SizedBox(width: 4),
-                                Text(
-                                  'Rating: ${review?.rating ?? "N/A"}',
-                                  style: const TextStyle(
-                                    fontSize: 16, // Increased text size to 16
-                                    fontWeight: FontWeight.w400,
-                                  ),
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 8),
-                            Text(
-                              review?.content ?? "",
-                              style: const TextStyle(
-                                fontSize: 16, // Increased text size to 16
-                                fontWeight: FontWeight.w400,
-                              ),
-                            ),
-                          ],
-                        ),
-                      );
+                      return ReviewCard(review: review);
                     },
                   ),
                 ),
               ],
             ),
+          ),
+          floatingActionButton: FloatingActionButton(
+            onPressed: () => {
+              showDialog<void>(
+                context: context,
+                builder: (BuildContext context) {
+                  return AlertDialog(
+                    scrollable: true,
+                    title: Text('Review ${game.title}'),
+                    content: Padding(
+                      padding: const EdgeInsets.all(8.0),
+                      child: Form(
+                        child: Column(
+                          children: <Widget>[
+                            DropdownButtonFormField(
+                              items: List.generate(
+                                authors.length,
+                                (index) => DropdownMenuItem(
+                                  value: authors[index],
+                                  child: Text(authors[index].name ?? "Unknown"),
+                                ),
+                              ),
+                              hint: const Text('Select Author'),
+                              onChanged: (a) {
+                                setState(() {
+                                  selectedAuthor = authors
+                                      .firstWhere((element) => element == a);
+                                });
+                              },
+                            ),
+                            TextFormField(
+                              decoration: const InputDecoration(
+                                labelText: 'Rating',
+                                icon: Icon(Icons.star),
+                              ),
+                              controller: ratingCtrl,
+                              keyboardType: TextInputType.number,
+                            ),
+                            TextFormField(
+                              decoration: const InputDecoration(
+                                labelText: 'Content',
+                                icon: Icon(Icons.content_paste),
+                              ),
+                              controller: contentCtrl,
+                              keyboardType: TextInputType.text,
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                    actions: <Widget>[
+                      TextButton(
+                        onPressed: () {
+                          Navigator.of(context).pop();
+                        },
+                        child: const Text('Cancel'),
+                      ),
+                      Mutation(
+                        options: MutationOptions(
+                          document: gql(GrapqhQuery.addReview),
+                          onCompleted: (data) {
+                            Navigator.of(context).pop();
+                            refetch!();
+                          },
+                        ),
+                        builder:
+                            (RunMutation runMutation, QueryResult? result) {
+                          return TextButton(
+                            onPressed: () {
+                              runMutation(
+                                {
+                                  'review': {
+                                    'rating': int.parse(ratingCtrl.text),
+                                    'content': contentCtrl.text,
+                                    'author_id': selectedAuthor?.id,
+                                    'game_id': game.id,
+                                  }
+                                },
+                              );
+                            },
+                            child: const Text('Create'),
+                          );
+                        },
+                      ),
+                    ],
+                  );
+                },
+              ),
+            },
+            child: const Icon(Icons.add),
           ),
         );
       },
