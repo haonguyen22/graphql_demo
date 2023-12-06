@@ -109,15 +109,11 @@ class _ReviewsScreenState extends State<ReviewsScreen> {
                           variables: {"page": ++page},
                           updateQuery:
                               (previousResultData, fetchMoreResultData) {
-                            var reviewList = <Review>[];
-                            for (var item
-                                in fetchMoreResultData!['reviewsPagination']) {
-                              reviewList.add(Review.fromJson(item));
-                            }
                             return {
+                              '__typename': 'Query',
                               'reviewsPagination': [
                                 ...previousResultData!['reviewsPagination'],
-                                ...reviewList
+                                ...fetchMoreResultData!['reviewsPagination']
                               ]
                             };
                           },
