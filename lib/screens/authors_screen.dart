@@ -32,7 +32,7 @@ class _AuthorsScreenState extends State<AuthorsScreen> {
     return Scaffold(
       appBar: const PreferredSize(
           preferredSize: Size.fromHeight(60),
-          child: MainAppBar(title: 'Games')),
+          child: MainAppBar(title: 'Authors')),
       body: _authors == null
           ? Center(
               child: CircularProgressIndicator(

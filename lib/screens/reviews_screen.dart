@@ -16,6 +16,7 @@ class ReviewsScreen extends StatefulWidget {
 class _ReviewsScreenState extends State<ReviewsScreen> {
   final ScrollController scrollController = ScrollController();
   List<Review> reviews = [];
+
   bool get isBottom {
     if (!scrollController.hasClients) return false;
     final maxScroll = scrollController.position.maxScrollExtent;
@@ -45,12 +46,14 @@ class _ReviewsScreenState extends State<ReviewsScreen> {
       body: Query(
         options: QueryOptions(
           document: gql(GrapqhQuery.getReviewPagination),
-          fetchPolicy: FetchPolicy.noCache,
+          fetchPolicy: FetchPolicy.networkOnly,
           variables: {
             'page': page,
           },
         ),
         builder: (QueryResult result, {fetchMore, refetch}) {
+          reviews = <Review>[];
+
           if (result.hasException) {
             return Center(child: Text(result.exception.toString()));
           }
@@ -65,55 +68,65 @@ class _ReviewsScreenState extends State<ReviewsScreen> {
           for (var item in result.data!['reviewsPagination']) {
             if (item is Map<String, dynamic>) {
               reviews.add(Review.fromJson(item));
+            } else {
+              reviews.add(item);
             }
           }
-          return Column(
-            children: [
-              Expanded(
-                child: ListView.separated(
-                  separatorBuilder: (context, index) {
-                    return const Divider(
-                      height: 1,
-                      thickness: 1,
-                    );
-                  },
-                  itemCount: reviews.length,
-                  itemBuilder: (_, index) {
-                    final review = reviews[index];
-                    return ItemListTile(
-                      icon: Icons.rate_review_rounded,
-                      title: review.content ?? "Review title",
-                      editFunction: () {},
-                      deleteFunction: () {},
-                      callback: () {},
-                      subtitle: '${review.author?.name}\n${review.game?.title}',
-                    );
-                  },
+          return RefreshIndicator(
+            onRefresh: refetch!,
+            child: Column(
+              children: [
+                Expanded(
+                  child: ListView.separated(
+                    separatorBuilder: (context, index) {
+                      return const Divider(
+                        height: 1,
+                        thickness: 1,
+                      );
+                    },
+                    itemCount: reviews.length,
+                    itemBuilder: (_, index) {
+                      final review = reviews[index];
+                      return ItemListTile(
+                        icon: Icons.rate_review_rounded,
+                        title: review.content ?? "Review title",
+                        editFunction: () {},
+                        deleteFunction: () {},
+                        callback: () {},
+                        subtitle:
+                            '${review.author?.name}\n${review.game?.title}',
+                      );
+                    },
+                  ),
                 ),
-              ),
-              ElevatedButton(
-                  onPressed: () {
-                    fetchMore!(
-                      FetchMoreOptions.partial(
-                        variables: {"page": page++},
-                        updateQuery: (previousResultData, fetchMoreResultData) {
-                          var reviews = <Review>[];
-                          for (var item
-                              in fetchMoreResultData!['reviewsPagination']) {
-                            reviews.add(Review.fromJson(item));
-                          }
-                          return {
-                            'reviewsPagination': [
-                              ...previousResultData!['reviewsPagination'],
-                              ...reviews
-                            ]
-                          };
-                        },
-                      ),
-                    );
-                  },
-                  child: const Text("Load more"))
-            ],
+                ElevatedButton(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Theme.of(context).primaryColor,
+                    ),
+                    onPressed: () {
+                      fetchMore!(
+                        FetchMoreOptions.partial(
+                          variables: {"page": ++page},
+                          updateQuery:
+                              (previousResultData, fetchMoreResultData) {
+                            var reviewList = <Review>[];
+                            for (var item
+                                in fetchMoreResultData!['reviewsPagination']) {
+                              reviewList.add(Review.fromJson(item));
+                            }
+                            return {
+                              'reviewsPagination': [
+                                ...previousResultData!['reviewsPagination'],
+                                ...reviewList
+                              ]
+                            };
+                          },
+                        ),
+                      );
+                    },
+                    child: const Text("Load more"))
+              ],
+            ),
           );
         },
       ),

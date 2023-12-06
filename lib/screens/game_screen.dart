@@ -178,6 +178,7 @@ class _GamesScreenState extends State<GamesScreen> {
               ],
             ),
       floatingActionButton: FloatingActionButton(
+        backgroundColor: Theme.of(context).primaryColor,
         onPressed: () async {
           await showDialog<void>(
             context: context,

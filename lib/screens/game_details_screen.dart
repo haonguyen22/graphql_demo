@@ -3,7 +3,6 @@ Solution 2: using Query and Mutation Widget to get data from server and create n
 
 */
 
-
 import 'package:flutter/material.dart';
 import 'package:graphql_demo/data/data_source/remote/graphql_service.dart';
 import 'package:graphql_demo/data/data_source/remote/query.dart';
@@ -102,6 +101,7 @@ class _GameDetailsScreenState extends State<GameDetailsScreen> {
             ),
           ),
           floatingActionButton: FloatingActionButton(
+            backgroundColor: Theme.of(context).primaryColor,
             onPressed: () => {
               showDialog<void>(
                 context: context,
