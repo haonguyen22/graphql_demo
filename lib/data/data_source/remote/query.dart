@@ -52,4 +52,20 @@ class GrapqhQuery {
       }
     }
   """;
+
+  static const getReviewPagination = r"""
+  query ReviewsPagination($page: Int!) {
+    reviewsPagination(page: $page) {
+      id
+      rating
+      content
+      author {
+        name
+      }
+      game {
+        title
+      }
+    }
+  }
+""";
 }

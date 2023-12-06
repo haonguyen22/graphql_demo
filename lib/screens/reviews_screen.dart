@@ -14,33 +14,61 @@ class ReviewsScreen extends StatefulWidget {
 }
 
 class _ReviewsScreenState extends State<ReviewsScreen> {
+  final ScrollController scrollController = ScrollController();
+  List<Review> reviews = [];
+  bool get isBottom {
+    if (!scrollController.hasClients) return false;
+    final maxScroll = scrollController.position.maxScrollExtent;
+    final currentScroll = scrollController.offset;
+    return currentScroll >= maxScroll * 0.9;
+  }
+
+  int page = 1;
+
+  @override
+  void initState() {
+    super.initState();
+  }
+
+  @override
+  void dispose() {
+    scrollController.dispose();
+    super.dispose();
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-        appBar: const PreferredSize(
-            preferredSize: Size.fromHeight(60),
-            child: MainAppBar(title: 'Reviews')),
-        body: Query(
-          options: QueryOptions(
-              document: gql(GrapqhQuery.queryAllReviews),
-              fetchPolicy: FetchPolicy.cacheFirst),
-          builder: (result, {fetchMore, refetch}) {
-            if (result.hasException) {
-              return Center(child: Text(result.exception.toString()));
-            }
-            if (result.isLoading) {
-              return const Center(
-                child: CircularProgressIndicator(
-                  color: Colors.blue,
-                  strokeWidth: 1.5,
-                ),
-              );
-            }
-            final List<Review> reviews = [];
-            for (var item in result.data!['reviews']) {
+      appBar: const PreferredSize(
+          preferredSize: Size.fromHeight(60),
+          child: MainAppBar(title: 'Reviews')),
+      body: Query(
+        options: QueryOptions(
+          document: gql(GrapqhQuery.getReviewPagination),
+          fetchPolicy: FetchPolicy.noCache,
+          variables: {
+            'page': page,
+          },
+        ),
+        builder: (QueryResult result, {fetchMore, refetch}) {
+          if (result.hasException) {
+            return Center(child: Text(result.exception.toString()));
+          }
+          if (result.isLoading && reviews.isEmpty) {
+            return const Center(
+              child: CircularProgressIndicator(
+                color: Colors.blue,
+                strokeWidth: 1.5,
+              ),
+            );
+          }
+          for (var item in result.data!['reviewsPagination']) {
+            if (item is Map<String, dynamic>) {
               reviews.add(Review.fromJson(item));
             }
-            return Column(children: [
+          }
+          return Column(
+            children: [
               Expanded(
                 child: ListView.separated(
                   separatorBuilder: (context, index) {
@@ -58,13 +86,37 @@ class _ReviewsScreenState extends State<ReviewsScreen> {
                       editFunction: () {},
                       deleteFunction: () {},
                       callback: () {},
-                      subtitle: review.author?.name,
+                      subtitle: '${review.author?.name}\n${review.game?.title}',
                     );
                   },
                 ),
               ),
-            ]);
-          },
-        ));
+              ElevatedButton(
+                  onPressed: () {
+                    fetchMore!(
+                      FetchMoreOptions.partial(
+                        variables: {"page": page++},
+                        updateQuery: (previousResultData, fetchMoreResultData) {
+                          var reviews = <Review>[];
+                          for (var item
+                              in fetchMoreResultData!['reviewsPagination']) {
+                            reviews.add(Review.fromJson(item));
+                          }
+                          return {
+                            'reviewsPagination': [
+                              ...previousResultData!['reviewsPagination'],
+                              ...reviews
+                            ]
+                          };
+                        },
+                      ),
+                    );
+                  },
+                  child: const Text("Load more"))
+            ],
+          );
+        },
+      ),
+    );
   }
 }
